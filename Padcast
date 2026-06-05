@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="PADcast" />
+<meta name="theme-color" content="#0a0c10" />
+<title>PADcast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0c10;
+    --bg-2:#10141b;
+    --panel:#161b24;
+    --panel-2:#1d2430;
+    --line:#252e3c;
+    --ink:#e8edf4;
+    --ink-dim:#8a97a8;
+    --ink-faint:#5a6577;
+    --signal:#c6f135;        /* electric lime accent */
+    --signal-deep:#9fcc12;
+    --signal-glow:rgba(198,241,53,.55);
+    --air:#ff7a4d;           /* warm "on air" coral */
+    --display:"Chakra Petch", "Sora", system-ui, sans-serif;
+    --body:"Sora", system-ui, -apple-system, sans-serif;
+    --safe-t:env(safe-area-inset-top, 0px);
+    --safe-b:env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:
+      radial-gradient(1200px 700px at 80% -10%, rgba(198,241,53,.07), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(255,122,77,.06), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:var(--body);
+    overflow:hidden;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  /* faint grain/texture */
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.035;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+  .app{display:flex;flex-direction:column;height:100%;padding-top:var(--safe-t);}
+
+  /* ---------- Top bar ---------- */
+  header{
+    display:flex;align-items:center;gap:14px;
+    padding:14px 18px 12px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(16,20,27,.9), rgba(16,20,27,.35));
+    backdrop-filter:blur(8px);
+  }
+  .logo{font-family:var(--display);font-weight:700;letter-spacing:.14em;font-size:18px;display:flex;align-items:center;gap:9px;}
+  .logo .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 14px var(--signal-glow);animation:pulse 2.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
+  .tabs{display:flex;gap:6px;margin-left:auto;}
+  .tab{
+    font-family:var(--display);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-dim);padding:8px 13px;border-radius:8px;border:1px solid transparent;cursor:pointer;
+    display:flex;align-items:center;gap:7px;transition:.15s;
+  }
+  .tab.active{color:var(--bg);background:var(--signal);box-shadow:0 0 18px var(--signal-glow);font-weight:600;}
+  .pad-status{font-size:11px;color:var(--ink-faint);font-family:var(--display);letter-spacing:.08em;display:flex;align-items:center;gap:6px;}
+  .pad-status .ic{width:8px;height:8px;border-radius:50%;background:var(--ink-faint);}
+  .pad-status.on .ic{background:var(--signal);box-shadow:0 0 10px var(--signal-glow);}
+
+  /* ---------- Main ---------- */
+  main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:22px 18px 8px;scroll-behavior:smooth;}
+  main::-webkit-scrollbar{width:0;}
+  .view{display:none;animation:fade .25s ease;}
+  .view.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .section-title{font-family:var(--display);font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);margin:0 0 16px;display:flex;align-items:center;gap:10px;}
+  .section-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent);}
+
+  /* show grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:14px;}
+  .show{
+    position:relative;border-radius:14px;overflow:hidden;background:var(--panel);
+    border:1px solid var(--line);cursor:pointer;aspect-ratio:1;transition:transform .12s, box-shadow .12s;
+  }
+  .show img{width:100%;height:100%;object-fit:cover;display:block;background:var(--panel-2);}
+  .show .cap{position:absolute;left:0;right:0;bottom:0;padding:18px 9px 8px;font-size:11px;line-height:1.25;
+    background:linear-gradient(0deg,rgba(8,10,14,.95),transparent);font-weight:500;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+
+  /* list rows (episodes / search) */
+  .row{
+    display:flex;gap:13px;align-items:center;padding:12px 14px;border-radius:13px;
+    background:var(--panel);border:1px solid var(--line);cursor:pointer;margin-bottom:10px;transition:transform .12s, box-shadow .12s;
+  }
+  .row .thumb{width:54px;height:54px;border-radius:9px;object-fit:cover;flex:none;background:var(--panel-2);}
+  .row .meta{min-width:0;flex:1;}
+  .row .t{font-weight:500;font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .row .s{font-size:11.5px;color:var(--ink-dim);margin-top:4px;font-family:var(--display);letter-spacing:.04em;display:flex;gap:10px;flex-wrap:wrap;}
+  .row .s .playing-tag{color:var(--air);}
+  .row .badge{font-family:var(--display);font-size:11px;color:var(--signal);border:1px solid var(--signal-deep);padding:5px 10px;border-radius:20px;flex:none;}
+
+  /* focus state (controller) */
+  .focused{outline:none;}
+  .show.focused,.row.focused{
+    transform:scale(1.035);
+    border-color:var(--signal);
+    box-shadow:0 0 0 2px var(--signal), 0 0 26px var(--signal-glow), 0 10px 30px rgba(0,0,0,.5);
+    z-index:2;
+  }
+  .tab.focused{border-color:var(--signal);box-shadow:0 0 0 2px var(--signal-glow);}
+
+  /* search input */
+  .searchbar{display:flex;gap:10px;margin-bottom:20px;}
+  .searchbar input{
+    flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);
+    padding:14px 16px;border-radius:12px;font-family:var(--body);font-size:15px;outline:none;
+  }
+  .searchbar input:focus{border-color:var(--signal);box-shadow:0 0 0 2px var(--signal-glow);}
+  .searchbar button{
+    background:var(--signal);color:var(--bg);border:none;border-radius:12px;padding:0 18px;
+    font-family:var(--display);font-weight:600;letter-spacing:.06em;cursor:pointer;font-size:14px;
+  }
+
+  .hint{color:var(--ink-faint);font-size:13px;line-height:1.6;text-align:center;padding:40px 20px;}
+  .hint b{color:var(--ink-dim);}
+  .spinner{width:30px;height:30px;border:3px solid var(--line);border-top-color:var(--signal);border-radius:50%;animation:spin 1s linear infinite;margin:34px auto;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ---------- Now Playing (full) ---------- */
+  #player .np-wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:8px;}
+  #player .art{width:min(62vw,260px);aspect-ratio:1;border-radius:20px;object-fit:cover;background:var(--panel-2);
+    box-shadow:0 24px 60px rgba(0,0,0,.6), 0 0 0 1px var(--line);}
+  #player.playing-anim .art{animation:breathe 5s ease-in-out infinite;}
+  @keyframes breathe{0%,100%{box-shadow:0 24px 60px rgba(0,0,0,.6),0 0 0 1px var(--line),0 0 0 0 rgba(255,122,77,0)}50%{box-shadow:0 24px 60px rgba(0,0,0,.6),0 0 0 1px var(--line),0 0 60px 6px rgba(255,122,77,.18)}}
+  #player .np-show{font-family:var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--air);font-size:12px;margin:22px 0 6px;}
+  #player .np-title{font-size:20px;font-weight:600;line-height:1.35;margin:0 0 22px;}
+  .scrub{width:100%;}
+  .bar{height:6px;border-radius:6px;background:var(--panel-2);overflow:hidden;border:1px solid var(--line);}
+  .bar>div{height:100%;width:0;background:linear-gradient(90deg,var(--signal-deep),var(--signal));box-shadow:0 0 12px var(--signal-glow);}
+  .times{display:flex;justify-content:space-between;font-family:var(--display);font-size:12px;color:var(--ink-dim);margin-top:8px;letter-spacing:.05em;}
+  .controls{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:24px;}
+  .ctl{width:54px;height:54px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.12s;font-family:var(--display);font-size:12px;}
+  .ctl svg{width:22px;height:22px;fill:currentColor;}
+  .ctl.big{width:74px;height:74px;background:var(--signal);color:var(--bg);border-color:var(--signal);box-shadow:0 0 26px var(--signal-glow);}
+  .ctl.big svg{width:30px;height:30px;}
+  .ctl.focused{transform:scale(1.08);border-color:var(--signal);box-shadow:0 0 0 2px var(--signal),0 0 22px var(--signal-glow);}
+  .speed{margin-top:18px;font-family:var(--display);letter-spacing:.08em;color:var(--ink-dim);font-size:13px;}
+  .speed b{color:var(--signal);}
+
+  /* ---------- Mini player ---------- */
+  #mini{
+    display:none;align-items:center;gap:12px;padding:10px 14px;margin:0 12px 8px;border-radius:14px;
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);cursor:pointer;
+  }
+  #mini.show{display:flex;}
+  #mini img{width:42px;height:42px;border-radius:8px;object-fit:cover;background:var(--panel);}
+  #mini .mt{flex:1;min-width:0;}
+  #mini .mt .a{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #mini .mt .b{font-size:11px;color:var(--air);font-family:var(--display);letter-spacing:.06em;margin-top:2px;}
+  #mini .mbar{height:3px;background:var(--panel);border-radius:3px;margin-top:6px;overflow:hidden;}
+  #mini .mbar>div{height:100%;background:var(--air);width:0;}
+  #mini .mplay{width:40px;height:40px;border-radius:50%;background:var(--signal);color:var(--bg);border:none;display:flex;align-items:center;justify-content:center;flex:none;}
+  #mini .mplay svg{width:18px;height:18px;fill:currentColor;}
+
+  /* ---------- Footer legend ---------- */
+  footer{
+    border-top:1px solid var(--line);background:linear-gradient(0deg,rgba(13,16,22,.95),rgba(13,16,22,.55));
+    backdrop-filter:blur(8px);padding:9px 14px calc(9px + var(--safe-b));
+    display:flex;gap:16px;overflow-x:auto;font-size:11px;color:var(--ink-dim);
+  }
+  footer::-webkit-scrollbar{height:0;}
+  .leg{display:flex;align-items:center;gap:7px;white-space:nowrap;font-family:var(--display);letter-spacing:.03em;}
+  .gly{width:21px;height:21px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
+    background:var(--panel-2);border:1px solid var(--line);color:var(--ink);font-family:var(--display);flex:none;}
+  .gly.a{color:#7bd88f;border-color:#3a6b46}.gly.b{color:#ff7a7a;border-color:#7a3a3a}
+  .gly.x{color:#7ab3ff;border-color:#3a567a}.gly.y{color:#ffd86b;border-color:#7a6b3a}
+  .gly.sh{font-size:9px;letter-spacing:0;}
+
+  /* discover chips */
+  .gear{margin-left:12px;font-size:20px;color:var(--ink-dim);cursor:pointer;line-height:1;padding:4px;transition:.15s;}
+  .gear:hover,.gear.focused{color:var(--signal);transform:rotate(40deg);}
+  .chips{display:flex;gap:9px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px;}
+  .chips::-webkit-scrollbar{height:0;}
+  .chip{font-family:var(--display);font-size:12px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;
+    padding:9px 15px;border-radius:22px;border:1px solid var(--line);background:var(--panel);color:var(--ink-dim);cursor:pointer;transition:.13s;flex:none;}
+  .chip.active{background:var(--signal);color:var(--bg);border-color:var(--signal);font-weight:600;box-shadow:0 0 16px var(--signal-glow);}
+  .chip.focused{border-color:var(--signal);box-shadow:0 0 0 2px var(--signal-glow);}
+
+  /* settings */
+  .setblock{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 16px 18px;margin-bottom:16px;}
+  .setblock label{font-family:var(--display);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--signal);}
+  .setblock p{color:var(--ink-dim);font-size:13px;line-height:1.6;margin:8px 0 0;}
+  .setblock code{background:var(--bg-2);padding:2px 6px;border-radius:5px;font-size:12px;color:var(--ink);}
+  .linkbtn{background:none;border:1px solid var(--line);color:var(--ink-dim);font-family:var(--display);font-size:12px;
+    letter-spacing:.06em;padding:9px 14px;border-radius:9px;cursor:pointer;margin:4px 8px 0 0;}
+  .linkbtn:hover{border-color:var(--signal);color:var(--ink);}
+  .diag{font-family:var(--display);font-size:12px;color:var(--ink-dim);margin-top:12px;line-height:1.8;white-space:pre-wrap;}
+  .diag .ok{color:var(--signal);} .diag .bad{color:#ff7a7a;}
+
+
+  #unlock{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(8,10,14,.94);backdrop-filter:blur(6px);text-align:center;padding:30px;}
+  #unlock .big{font-family:var(--display);font-size:26px;font-weight:700;letter-spacing:.12em;margin-bottom:10px;display:flex;align-items:center;gap:12px;}
+  #unlock .big .dot{width:13px;height:13px;border-radius:50%;background:var(--signal);box-shadow:0 0 18px var(--signal-glow);}
+  #unlock p{color:var(--ink-dim);max-width:340px;line-height:1.65;font-size:14px;}
+  #unlock .go{margin-top:26px;background:var(--signal);color:var(--bg);border:none;padding:16px 40px;border-radius:14px;
+    font-family:var(--display);font-weight:700;letter-spacing:.1em;font-size:15px;cursor:pointer;box-shadow:0 0 30px var(--signal-glow);}
+  #unlock small{display:block;margin-top:20px;color:var(--ink-faint);font-size:11.5px;line-height:1.6;}
+
+  .toast{position:fixed;left:50%;bottom:calc(86px + var(--safe-b));transform:translateX(-50%);
+    background:var(--panel-2);border:1px solid var(--line);color:var(--ink);padding:11px 18px;border-radius:11px;
+    font-size:13px;z-index:150;opacity:0;transition:.3s;pointer-events:none;max-width:80vw;text-align:center;}
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo"><span class="dot"></span>PADCAST</div>
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-view="library">Library</div>
+      <div class="tab" data-view="discover">Discover</div>
+      <div class="tab" data-view="search">Search</div>
+      <div class="tab" data-view="player">Playing</div>
+    </div>
+    <div class="gear" id="gearBtn" title="Settings">⚙</div>
+  </header>
+
+  <main id="main">
+    <!-- LIBRARY -->
+    <section class="view active" id="library">
+      <div class="section-title">Your Shows</div>
+      <div class="grid" id="showGrid"></div>
+      <div class="hint" id="libEmpty">No shows yet. Open <b>Discover</b> (the View/⊟ button on your controller) to browse Top Charts and categories, or <b>Search</b> by name.</div>
+    </section>
+
+    <!-- DISCOVER -->
+    <section class="view" id="discover">
+      <div class="chips" id="chips"></div>
+      <div class="section-title" id="discTitle">Top Charts</div>
+      <div id="discOut"></div>
+    </section>
+
+    <!-- SEARCH -->
+    <section class="view" id="search">
+      <div class="searchbar">
+        <input id="q" type="search" placeholder="Search podcasts…" autocomplete="off" autocorrect="off" />
+        <button id="qgo">Go</button>
+      </div>
+      <div id="searchOut"></div>
+    </section>
+
+    <!-- EPISODES -->
+    <section class="view" id="episodes">
+      <div class="section-title" id="epTitle">Episodes</div>
+      <div id="epOut"></div>
+    </section>
+
+    <!-- PLAYER -->
+    <section class="view" id="player">
+      <div class="np-wrap">
+        <img class="art" id="npArt" alt="" />
+        <div class="np-show" id="npShow">—</div>
+        <div class="np-title" id="npTitle">Nothing playing</div>
+        <div class="scrub">
+          <div class="bar"><div id="npBar"></div></div>
+          <div class="times"><span id="npCur">0:00</span><span id="npDur">0:00</span></div>
+        </div>
+        <div class="controls">
+          <div class="ctl" id="cPrev" title="Skip back 15s"><svg viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg></div>
+          <div class="ctl big" id="cPlay"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+          <div class="ctl" id="cNext" title="Skip forward 30s"><svg viewBox="0 0 24 24"><path d="M13 6v12l8.5-6L13 6zM4 6v12l8.5-6L4 6z"/></svg></div>
+        </div>
+        <div class="speed">SPEED <b id="npSpeed">1.0×</b> &nbsp;·&nbsp; LB −15s &nbsp; RB +30s &nbsp;·&nbsp; LT/RT speed</div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="settings">
+      <div class="section-title">Settings</div>
+      <div class="setblock">
+        <label>Custom feed proxy (optional, most reliable)</label>
+        <p>Public proxies get rate-limited or go down. If feeds won't load, host a tiny proxy and paste its prefix here — your requests get appended after it. Example: <code>https://your-proxy.example/?url=</code></p>
+        <div class="searchbar" style="margin:12px 0 4px">
+          <input id="proxyIn" type="url" placeholder="https://your-proxy/?url=" autocapitalize="off" autocorrect="off" spellcheck="false" />
+          <button id="proxySave">Save</button>
+        </div>
+        <button class="linkbtn" id="proxyClear">Clear custom proxy</button>
+        <button class="linkbtn" id="diagBtn">Run connection test</button>
+        <div id="diagOut" class="diag"></div>
+      </div>
+      <div class="setblock">
+        <label>About</label>
+        <p>PADcast streams from public podcast feeds. Search &amp; charts use Apple's directory. Playback position, subscriptions and speed are saved on this device. Tip: <b>Add to Home Screen</b> in Safari for full-screen, app-like use.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="mini">
+    <img id="miniArt" alt="" />
+    <div class="mt">
+      <div class="a" id="miniTitle">—</div>
+      <div class="b" id="miniShow">—</div>
+      <div class="mbar"><div id="miniBar"></div></div>
+    </div>
+    <button class="mplay" id="miniPlay"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+  </div>
+
+  <footer id="legend">
+    <div class="leg"><span class="gly a">A</span> Select</div>
+    <div class="leg"><span class="gly b">B</span> Back</div>
+    <div class="leg"><span class="gly x">X</span> Play / Pause</div>
+    <div class="leg"><span class="gly y">Y</span> Now Playing</div>
+    <div class="leg"><span class="gly sh">LB</span> −15s</div>
+    <div class="leg"><span class="gly sh">RB</span> +30s</div>
+    <div class="leg"><span class="gly">✛</span> Navigate</div>
+    <div class="pad-status" id="padStatus" style="margin-left:auto"><span class="ic"></span><span id="padLabel">No controller</span></div>
+  </footer>
+</div>
+
+<audio id="audio" preload="metadata" crossorigin="anonymous"></audio>
+
+<div id="unlock">
+  <div class="big"><span class="dot"></span>PADCAST</div>
+  <p>A controller-first podcast player for iPhone. Pair your Xbox / PlayStation controller in Settings → Bluetooth, then tap below once to enable audio.</p>
+  <button class="go" id="unlockBtn">TAP TO START</button>
+  <small>iOS needs one tap to unlock sound. After that, your controller runs everything.<br>Add to Home Screen for a full-screen, app-like experience.</small>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ============================ Storage (graceful) ============================ */
+const store = (()=>{
+  let mem = {};
+  let ok = true;
+  try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e){ ok=false; }
+  return {
+    get(k,def){ try{ const v = ok? localStorage.getItem(k): mem[k]; return v==null?def:JSON.parse(v);}catch(e){return def;} },
+    set(k,v){ try{ const s=JSON.stringify(v); if(ok) localStorage.setItem(k,s); else mem[k]=s; }catch(e){ mem[k]=JSON.stringify(v); } }
+  };
+})();
+
+/* ============================ State ============================ */
+const state = {
+  view: "library",
+  subs: store.get("padcast.subs", []),          // [{feedUrl,title,artwork}]
+  positions: store.get("padcast.pos", {}),      // {guid: seconds}
+  episodes: [],
+  currentShow: null,
+  searchResults: [],
+  discoverCat: "Top",
+  discoverResults: null,
+  discoverLoaded: false,
+  playing: null,                                 // {guid,title,url,artwork,showTitle}
+  speed: store.get("padcast.speed", 1),
+  audioUnlocked: false,
+  focusables: [],
+  focus: 0,
+};
+const SPEEDS = [0.8,1,1.25,1.5,1.75,2];
+
+/* ============================ DOM ============================ */
+const $ = s=>document.querySelector(s);
+const audio = $("#audio");
+const main = $("#main");
+const toastEl = $("#toast");
+let toastTimer;
+function toast(msg){ toastEl.textContent=msg; toastEl.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove("show"),2200); }
+
+/* ============================ Network: CORS-tolerant fetch ============================
+   Each fetcher returns the body text, or throws. We try them in order and keep the
+   first that works. Public proxies come and go / get rate-limited, so we keep several
+   and also let the user paste their own (most reliable). corsproxy.io was removed in
+   2026 because its free tier became localhost-only. */
+function customProxy(){ return store.get("padcast.proxy",""); }
+function fetchers(url){
+  const list = [];
+  // 0) user-supplied proxy first if set (e.g. "https://my.proxy/?url=")
+  const cp = customProxy();
+  if(cp) list.push(()=>doFetch(cp + encodeURIComponent(url)));
+  // 1) direct — works for feeds/APIs that send CORS headers (most Apple endpoints do)
+  list.push(()=>doFetch(url));
+  // 2) AllOrigins raw
+  list.push(()=>doFetch("https://api.allorigins.win/raw?url="+encodeURIComponent(url)));
+  // 3) CodeTabs
+  list.push(()=>doFetch("https://api.codetabs.com/v1/proxy/?quest="+encodeURIComponent(url)));
+  // 4) cors.x2u.in (path-style)
+  list.push(()=>doFetch("https://cors.x2u.in/"+url));
+  // 5) killcors
+  list.push(()=>doFetch("https://proxy.killcors.com/?url="+encodeURIComponent(url)));
+  // 6) AllOrigins JSON wrapper (returns {contents}) — last resort, handles odd encodings
+  list.push(async ()=>{ const t=await doFetch("https://api.allorigins.win/get?url="+encodeURIComponent(url)); try{ return JSON.parse(t).contents||""; }catch(e){ return ""; } });
+  return list;
+}
+function doFetch(u){
+  // NOTE: deliberately no AbortController/signal here. Some sandboxed webviews relay
+  // fetch by structured-cloning the init object, and AbortSignal isn't cloneable
+  // ("The object can not be cloned."). We race against a timer instead.
+  const req = fetch(u, {headers:{"Accept":"application/rss+xml, application/xml, text/xml, application/json, */*"}})
+    .then(r=>{ if(!r.ok) throw new Error("HTTP "+r.status); return r.text(); });
+  const timeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")), 10000));
+  return Promise.race([req, timeout]);
+}
+async function fetchText(url){
+  let lastErr;
+  for(const f of fetchers(url)){
+    try{ const text = await f(); if(text && text.length>40) return text; }
+    catch(e){ lastErr=e; }
+  }
+  throw new Error("All sources blocked"+(lastErr?" ("+lastErr.message+")":""));
+}
+async function fetchJSON(url){
+  // iTunes Search API is CORS-friendly; fall back through proxies just in case.
+  const txt = await fetchText(url);
+  return JSON.parse(txt);
+}
+
+/* ============================ Podcast search (iTunes) ============================ */
+async function searchPodcasts(term){
+  const url = "https://itunes.apple.com/search?media=podcast&entity=podcast&limit=30&term="+encodeURIComponent(term);
+  const data = await fetchJSON(url);
+  return (data.results||[]).filter(r=>r.feedUrl).map(r=>({
+    feedUrl:r.feedUrl, title:r.collectionName, author:r.artistName,
+    artwork:r.artworkUrl600||r.artworkUrl100||""
+  }));
+}
+
+/* ============================ Discover (Apple charts + categories) ============================ */
+// Categories: "Top" pulls real Apple charts; the rest use keyword search (no fragile genre IDs).
+const CATEGORIES = ["Top","Comedy","News","True Crime","Technology","Business","Science","Health","Sports","Society","Music","History","Education"];
+async function getTopPodcasts(limit=24){
+  // Apple charts give collection IDs; one lookup resolves all feed URLs in a single call.
+  const chartUrl = "https://itunes.apple.com/us/rss/toppodcasts/limit="+limit+"/json";
+  const data = await fetchJSON(chartUrl);
+  const entries = (data.feed && data.feed.entry) ? data.feed.entry : [];
+  const ids = entries.map(e=>e.id && e.id.attributes && e.id.attributes["im:id"]).filter(Boolean);
+  if(!ids.length) throw new Error("no chart data");
+  const look = await fetchJSON("https://itunes.apple.com/lookup?id="+ids.join(",")+"&entity=podcast");
+  const byId = {};
+  (look.results||[]).forEach(r=>{ if(r.feedUrl) byId[r.collectionId]=r; });
+  return ids.map(id=>byId[id]).filter(Boolean).map(r=>({
+    feedUrl:r.feedUrl, title:r.collectionName, author:r.artistName,
+    artwork:r.artworkUrl600||r.artworkUrl100||""
+  }));
+}
+async function getCategory(cat){
+  if(cat==="Top") return getTopPodcasts();
+  return searchPodcasts(cat);
+}
+
+/* ============================ RSS parsing ============================ */
+function stripTags(html){ const d=document.createElement("div"); d.innerHTML=html||""; return (d.textContent||"").replace(/\s+/g," ").trim(); }
+function fmtDate(d){ if(!d) return ""; const dt=new Date(d); if(isNaN(dt)) return ""; return dt.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}); }
+function fmtDur(sec){ sec=Math.max(0,Math.floor(sec||0)); const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;
+  return h? `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}` : `${m}:${String(s).padStart(2,"0")}`; }
+function parseDur(str){ if(!str) return 0; if(/^\d+$/.test(str.trim())) return parseInt(str,10);
+  const p=str.split(":").map(Number); if(p.some(isNaN)) return 0;
+  return p.reduce((a,n)=>a*60+n,0); }
+
+async function loadFeed(show){
+  const xmlText = await fetchText(show.feedUrl);
+  const doc = new DOMParser().parseFromString(xmlText,"text/xml");
+  const ns = "http://www.itunes.com/dtds/podcast-1.0.dtd";
+  const chTitle = doc.querySelector("channel > title")?.textContent?.trim() || show.title;
+  let chArt = show.artwork
+    || doc.getElementsByTagNameNS(ns,"image")[0]?.getAttribute("href")
+    || doc.querySelector("channel > image > url")?.textContent || "";
+  const items = [...doc.querySelectorAll("item")].map(it=>{
+    const enc = it.querySelector("enclosure");
+    const guid = it.querySelector("guid")?.textContent?.trim() || enc?.getAttribute("url") || it.querySelector("link")?.textContent || Math.random().toString(36);
+    const durEl = it.getElementsByTagNameNS(ns,"duration")[0];
+    const epImg = it.getElementsByTagNameNS(ns,"image")[0]?.getAttribute("href");
+    return {
+      guid,
+      title: it.querySelector("title")?.textContent?.trim() || "Untitled episode",
+      url: enc?.getAttribute("url") || "",
+      date: it.querySelector("pubDate")?.textContent || "",
+      duration: parseDur(durEl?.textContent),
+      desc: stripTags(it.querySelector("description")?.textContent || ""),
+      artwork: epImg || chArt,
+      showTitle: chTitle,
+    };
+  }).filter(e=>e.url);
+  return {title:chTitle, artwork:chArt, episodes:items};
+}
+
+/* ============================ Rendering ============================ */
+function setView(v){
+  state.view=v;
+  document.querySelectorAll(".view").forEach(s=>s.classList.toggle("active", s.id===v));
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.view===v));
+  main.scrollTop = 0;
+  if(v==="discover" && !state.discoverLoaded){ state.discoverLoaded=true; renderChips(); loadCategory(state.discoverCat); }
+  buildFocus();
+}
+
+function renderLibrary(){
+  const grid=$("#showGrid"); grid.innerHTML="";
+  $("#libEmpty").style.display = state.subs.length? "none":"block";
+  state.subs.forEach((s,i)=>{
+    const el=document.createElement("div"); el.className="show"; el.dataset.focus="1";
+    el.innerHTML = `<img src="${s.artwork||""}" alt="" onerror="this.style.opacity=.15"><div class="cap">${escapeHtml(s.title)}</div>`;
+    el.onclick=()=>openShow(s);
+    grid.appendChild(el);
+  });
+}
+
+function renderResultList(list, out, emptyMsg, placeholderMsg){
+  out.innerHTML="";
+  if(list===null){ out.innerHTML=`<div class="hint">${placeholderMsg||""}</div>`; return; }
+  if(list.length===0){ out.innerHTML=`<div class="hint">${emptyMsg||"Nothing found."}</div>`; return; }
+  list.forEach(s=>{
+    const subbed = state.subs.some(x=>x.feedUrl===s.feedUrl);
+    const el=document.createElement("div"); el.className="row"; el.dataset.focus="1";
+    el.innerHTML=`<img class="thumb" src="${s.artwork}" onerror="this.style.opacity=.15">
+      <div class="meta"><div class="t">${escapeHtml(s.title)}</div><div class="s"><span>${escapeHtml(s.author||"")}</span></div></div>
+      <div class="badge">${subbed?"Open":"+ Add"}</div>`;
+    el.onclick=()=>{ if(!subbed) subscribe(s); openShow(s); };
+    out.appendChild(el);
+  });
+}
+function renderSearch(list){
+  renderResultList(list, $("#searchOut"),
+    "No shows found. Try another search.",
+    "Type a show name and press <b>Go</b>. Tip: tap the field to use the keyboard, then your controller takes over the results.");
+}
+
+/* discover chips + results */
+function renderChips(){
+  const c=$("#chips"); c.innerHTML="";
+  CATEGORIES.forEach(cat=>{
+    const el=document.createElement("div");
+    el.className="chip"+(cat===state.discoverCat?" active":"");
+    el.textContent=cat; el.dataset.chip="1";
+    el.onclick=()=>loadCategory(cat);
+    c.appendChild(el);
+  });
+}
+async function loadCategory(cat){
+  state.discoverCat=cat; renderChips();
+  $("#discTitle").textContent = cat==="Top" ? "Top Charts" : cat;
+  $("#discOut").innerHTML='<div class="spinner"></div>';
+  try{
+    state.discoverResults = await getCategory(cat);
+    renderResultList(state.discoverResults, $("#discOut"), "Nothing here right now.");
+  }catch(e){
+    $("#discOut").innerHTML=`<div class="hint">Couldn't load Discover.<br><b>${escapeHtml(e.message)}</b><br>This usually means the feed proxies are busy. Try again, or set a custom proxy in ⚙ Settings.</div>`;
+  }
+  if(state.view==="discover") buildFocus();
+}
+
+function renderEpisodes(){
+  const out=$("#epOut"); out.innerHTML="";
+  $("#epTitle").textContent = state.currentShow?.title || "Episodes";
+  state.episodes.forEach(ep=>{
+    const pos = state.positions[ep.guid];
+    const isPlaying = state.playing && state.playing.guid===ep.guid;
+    const subStr = [fmtDate(ep.date), ep.duration?fmtDur(ep.duration):"", pos&&!isPlaying?`▸ resume ${fmtDur(pos)}`:""].filter(Boolean);
+    const el=document.createElement("div"); el.className="row"; el.dataset.focus="1";
+    el.innerHTML=`<img class="thumb" src="${ep.artwork}" onerror="this.style.opacity=.15">
+      <div class="meta"><div class="t">${escapeHtml(ep.title)}</div>
+      <div class="s">${subStr.map(x=>`<span class="${isPlaying&&x===subStr[0]?'':''}">${escapeHtml(x)}</span>`).join("")}${isPlaying?'<span class="playing-tag">● NOW PLAYING</span>':""}</div></div>`;
+    el.onclick=()=>playEpisode(ep);
+    out.appendChild(el);
+  });
+}
+
+function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+/* ============================ Actions ============================ */
+async function doSearch(){
+  const term=$("#q").value.trim(); if(!term) return;
+  $("#searchOut").innerHTML='<div class="spinner"></div>';
+  try{ state.searchResults=await searchPodcasts(term); renderSearch(state.searchResults); }
+  catch(e){ $("#searchOut").innerHTML=`<div class="hint">Search failed. Check your connection and try again.</div>`; }
+  if(state.view==="search") buildFocus();
+}
+function subscribe(s){
+  if(state.subs.some(x=>x.feedUrl===s.feedUrl)) return;
+  state.subs.unshift({feedUrl:s.feedUrl,title:s.title,artwork:s.artwork});
+  store.set("padcast.subs",state.subs);
+  renderLibrary(); toast("Added "+s.title);
+}
+async function openShow(s){
+  state.currentShow=s; setView("episodes");
+  $("#epTitle").textContent=s.title; $("#epOut").innerHTML='<div class="spinner"></div>';
+  try{
+    const feed=await loadFeed(s);
+    state.currentShow.artwork = state.currentShow.artwork||feed.artwork;
+    state.episodes=feed.episodes; renderEpisodes();
+  }catch(e){ $("#epOut").innerHTML=`<div class="hint">Couldn't load this feed.<br><b>${escapeHtml(e.message)}</b><br>Some feeds block browsers; try another show.</div>`; }
+  if(state.view==="episodes") buildFocus();
+}
+
+function playEpisode(ep){
+  state.playing={...ep};
+  audio.src=ep.url;
+  audio.playbackRate=state.speed;
+  const resume = state.positions[ep.guid];
+  const start = (resume && (!ep.duration || resume < ep.duration-20)) ? resume : 0;
+  audio.currentTime=0;
+  audio.play().then(()=>{ if(start>0){ audio.currentTime=start; } }).catch(()=>{});
+  updatePlayerUI(); updateMini(); setMediaSession();
+  setView("player");
+}
+function togglePlay(){
+  if(!state.playing) return;
+  if(audio.paused){ audio.play().catch(()=>{}); } else { audio.pause(); }
+}
+function skip(sec){ if(!state.playing) return; audio.currentTime=Math.max(0,Math.min((audio.duration||1e9), audio.currentTime+sec)); }
+function cycleSpeed(dir){
+  let i=SPEEDS.indexOf(state.speed); if(i<0)i=1; i=Math.max(0,Math.min(SPEEDS.length-1,i+dir));
+  state.speed=SPEEDS[i]; audio.playbackRate=state.speed; store.set("padcast.speed",state.speed);
+  updatePlayerUI();
+  toast("Speed "+state.speed+"×");
+}
+
+/* ============================ Player UI sync ============================ */
+const playIcon='<path d="M8 5v14l11-7z"/>';
+const pauseIcon='<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
+function updatePlayerUI(){
+  const p=state.playing;
+  $("#player").classList.toggle("playing-anim", !!p && !audio.paused);
+  if(p){ $("#npArt").src=p.artwork||""; $("#npShow").textContent=p.showTitle||""; $("#npTitle").textContent=p.title; }
+  $("#cPlay").querySelector("svg").innerHTML = (p && !audio.paused)? pauseIcon : playIcon;
+  $("#miniPlay").querySelector("svg").innerHTML = (p && !audio.paused)? pauseIcon : playIcon;
+  $("#npSpeed").textContent = state.speed + (Number.isInteger(state.speed)?".0":"") + "×";
+}
+function updateMini(){
+  const m=$("#mini"), p=state.playing;
+  if(p && state.view!=="player"){ m.classList.add("show"); $("#miniArt").src=p.artwork||""; $("#miniTitle").textContent=p.title; $("#miniShow").textContent=p.showTitle||""; }
+  else m.classList.remove("show");
+}
+audio.addEventListener("play",()=>{updatePlayerUI();updateMini();buildFocus();});
+audio.addEventListener("pause",()=>{updatePlayerUI();updateMini();});
+audio.addEventListener("loadedmetadata",()=>{ $("#npDur").textContent=fmtDur(audio.duration); });
+audio.addEventListener("ended",()=>{ playNextEpisode(); });
+let saveTick=0;
+audio.addEventListener("timeupdate",()=>{
+  const cur=audio.currentTime, dur=audio.duration||0;
+  const pct = dur? (cur/dur*100):0;
+  $("#npBar").style.width=pct+"%"; $("#miniBar").style.width=pct+"%";
+  $("#npCur").textContent=fmtDur(cur); if(dur) $("#npDur").textContent=fmtDur(dur);
+  if(state.playing && cur-saveTick>4){ saveTick=cur; state.positions[state.playing.guid]=Math.floor(cur); store.set("padcast.pos",state.positions); }
+});
+function playNextEpisode(){
+  if(!state.playing) return;
+  const i=state.episodes.findIndex(e=>e.guid===state.playing.guid);
+  if(i>=0 && i+1<state.episodes.length) playEpisode(state.episodes[i+1]);
+}
+
+/* ============================ Media Session (lock screen) ============================ */
+function setMediaSession(){
+  if(!("mediaSession" in navigator) || !state.playing) return;
+  const p=state.playing;
+  navigator.mediaSession.metadata = new MediaMetadata({title:p.title, artist:p.showTitle||"Podcast", album:"PADcast",
+    artwork:[{src:p.artwork||"", sizes:"512x512", type:"image/jpeg"}]});
+  const set=(a,f)=>{ try{navigator.mediaSession.setActionHandler(a,f);}catch(e){} };
+  set("play",()=>audio.play()); set("pause",()=>audio.pause());
+  set("seekbackward",()=>skip(-15)); set("seekforward",()=>skip(30));
+  set("previoustrack",()=>skip(-15)); set("nexttrack",()=>skip(30));
+}
+
+/* ============================ Focus / navigation ============================ */
+function buildFocus(){
+  let nodes=[];
+  if(state.view==="library") nodes=[...document.querySelectorAll("#library .show")];
+  else if(state.view==="search") nodes=[...document.querySelectorAll("#search .row")];
+  else if(state.view==="discover") nodes=[...document.querySelectorAll("#discover .row")];
+  else if(state.view==="episodes") nodes=[...document.querySelectorAll("#episodes .row")];
+  else if(state.view==="player") nodes=[$("#cPrev"),$("#cPlay"),$("#cNext")];
+  else nodes=[];
+  state.focusables=nodes;
+  if(state.focus>=nodes.length) state.focus=Math.max(0,nodes.length-1);
+  paintFocus();
+}
+function paintFocus(){
+  document.querySelectorAll(".focused").forEach(n=>n.classList.remove("focused"));
+  const n=state.focusables[state.focus];
+  if(n){ n.classList.add("focused"); n.scrollIntoView({block:"nearest",inline:"nearest"}); }
+}
+function moveFocus(delta){
+  if(!state.focusables.length) return;
+  state.focus=(state.focus+delta+state.focusables.length)%state.focusables.length;
+  paintFocus();
+}
+function gridCols(){
+  const grid=$("#showGrid"); if(!grid.firstChild) return 1;
+  const gw=grid.clientWidth, cw=grid.firstChild.getBoundingClientRect().width+14;
+  return Math.max(1, Math.round(gw/cw));
+}
+function cycleCategory(dir){
+  let i=CATEGORIES.indexOf(state.discoverCat); if(i<0)i=0;
+  i=(i+dir+CATEGORIES.length)%CATEGORIES.length;
+  state.focus=0; loadCategory(CATEGORIES[i]);
+}
+function navVertical(dir){ // dir -1 up, +1 down
+  if(state.view==="player"){ cycleSpeed(dir===-1?1:-1); return; } // up = faster
+  if(state.view==="library"){ moveFocus(dir*gridCols()); }
+  else moveFocus(dir);
+}
+function navHorizontal(dir){ // dir -1 left, +1 right
+  if(state.view==="player"){ skip(dir===-1?-15:30); return; }
+  if(state.view==="discover"){ cycleCategory(dir); return; } // L/R switches category
+  moveFocus(dir);
+}
+function activate(){
+  const n=state.focusables[state.focus];
+  if(n) n.click();
+}
+function goBack(){
+  if(state.view==="episodes") setView("library");
+  else if(state.view==="search") setView("library");
+  else if(state.view==="discover") setView("library");
+  else if(state.view==="settings") setView("library");
+  else if(state.view==="player") setView(state.currentShow?"episodes":"library");
+}
+
+/* ============================ Gamepad loop ============================ */
+const padState = {};      // index -> {buttons:[], axes:[]}
+const repeat = { dir:0, t:0 };
+const REPEAT_DELAY=380, REPEAT_RATE=110;
+function pressed(gp,i){ return gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value>0.5); }
+
+function pollPads(){
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  let any=false;
+  for(const gp of pads){
+    if(!gp) continue; any=true;
+    const prev = padState[gp.index] || {b:[],a:[]};
+    const now = {b:gp.buttons.map(b=>b.pressed||b.value>0.5), a:gp.axes.slice()};
+    const justPressed = i => now.b[i] && !prev.b[i];
+
+    // Buttons (standard mapping)
+    if(justPressed(0)) activate();                 // A
+    if(justPressed(1)) goBack();                   // B
+    if(justPressed(2)) togglePlay();               // X
+    if(justPressed(3)) setView("player");          // Y
+    if(justPressed(4)) skip(-15);                  // LB
+    if(justPressed(5)) skip(30);                   // RB
+    if(justPressed(6)) cycleSpeed(-1);             // LT
+    if(justPressed(7)) cycleSpeed(1);              // RT
+    if(justPressed(8)) setView("discover");        // Back/View → Discover
+    if(justPressed(9)) setView("library");         // Start/Menu → Library
+    if(justPressed(10)) togglePlay();              // L3
+    if(justPressed(12)) navVertical(-1);           // D-up
+    if(justPressed(13)) navVertical(1);            // D-down
+    if(justPressed(14)) navHorizontal(-1);         // D-left
+    if(justPressed(15)) navHorizontal(1);          // D-right
+
+    // Left stick with auto-repeat
+    const ax=now.a[1]||0, axx=now.a[0]||0;
+    let dir=0;
+    if(ax<-0.55) dir=-1; else if(ax>0.55) dir=1;
+    const tnow=performance.now();
+    if(dir!==0){
+      if(repeat.dir!==dir){ repeat.dir=dir; repeat.t=tnow+REPEAT_DELAY; navVertical(dir); }
+      else if(tnow>=repeat.t){ repeat.t=tnow+REPEAT_RATE; navVertical(dir); }
+    } else if(Math.abs(axx)>0.6){
+      if(repeat.dir!==(axx<0?-2:2)){ repeat.dir=(axx<0?-2:2); repeat.t=tnow+REPEAT_DELAY; navHorizontal(axx<0?-1:1); }
+      else if(tnow>=repeat.t){ repeat.t=tnow+REPEAT_RATE; navHorizontal(axx<0?-1:1); }
+    } else { repeat.dir=0; }
+
+    padState[gp.index]=now;
+  }
+  setPadStatus(any, pads);
+  requestAnimationFrame(pollPads);
+}
+function setPadStatus(any,pads){
+  const el=$("#padStatus");
+  if(any){
+    el.classList.add("on");
+    const gp=[...pads].find(p=>p);
+    let name=gp&&gp.id?gp.id.replace(/\(.*?\)/g,"").trim():"Controller";
+    if(/xbox/i.test(name))name="Xbox Controller"; else if(/dualsense|dualshock|playstation|wireless controller/i.test(name))name="PlayStation Controller";
+    $("#padLabel").textContent=name.slice(0,22)||"Controller";
+  } else { el.classList.remove("on"); $("#padLabel").textContent="No controller"; }
+}
+window.addEventListener("gamepadconnected",e=>{ toast("Controller connected: "+(e.gamepad.id||"").slice(0,20)); });
+
+/* ============================ Audio unlock (iOS) ============================ */
+function unlock(){
+  state.audioUnlocked=true;
+  // play+pause a silent buffer to satisfy iOS user-gesture requirement
+  audio.muted=true;
+  audio.play().then(()=>{ audio.pause(); audio.muted=false; }).catch(()=>{ audio.muted=false; });
+  $("#unlock").style.display="none";
+}
+$("#unlockBtn").addEventListener("click",unlock);
+$("#unlock").addEventListener("touchend",e=>{ if(e.target.id==="unlock") unlock(); });
+
+/* ============================ Wire UI ============================ */
+$("#tabs").addEventListener("click",e=>{ const t=e.target.closest(".tab"); if(t) setView(t.dataset.view); });
+$("#qgo").addEventListener("click",doSearch);
+$("#q").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); doSearch(); $("#q").blur(); } });
+$("#cPlay").addEventListener("click",togglePlay);
+$("#cPrev").addEventListener("click",()=>skip(-15));
+$("#cNext").addEventListener("click",()=>skip(30));
+$("#mini").addEventListener("click",e=>{ if(e.target.closest("#miniPlay")){ togglePlay(); e.stopPropagation(); } else setView("player"); });
+$("#gearBtn").addEventListener("click",()=>setView("settings"));
+
+/* settings: custom proxy + diagnostics */
+$("#proxyIn").value = customProxy();
+$("#proxySave").addEventListener("click",()=>{
+  let v=$("#proxyIn").value.trim();
+  store.set("padcast.proxy", v);
+  toast(v? "Custom proxy saved":"Proxy cleared");
+});
+$("#proxyClear").addEventListener("click",()=>{ $("#proxyIn").value=""; store.set("padcast.proxy",""); toast("Proxy cleared"); });
+$("#diagBtn").addEventListener("click",async()=>{
+  const out=$("#diagOut"); out.innerHTML="Testing connection…\n";
+  const tests=[
+    ["Apple search", "https://itunes.apple.com/search?media=podcast&limit=1&term=test"],
+    ["Apple charts", "https://itunes.apple.com/us/rss/toppodcasts/limit=1/json"],
+    ["Sample RSS feed", "https://feeds.simplecast.com/54nAGcIl"],
+  ];
+  let log="";
+  for(const [name,url] of tests){
+    try{ const t=await fetchText(url); log+=`<span class="ok">✓</span> ${name} — OK (${t.length} bytes)\n`; }
+    catch(e){ log+=`<span class="bad">✗</span> ${name} — ${escapeHtml(e.message)}\n`; }
+    out.innerHTML=log;
+  }
+  log+="\nIf all fail here but Apple works in Safari, you're likely viewing this inside an app preview that blocks network — open the hosted URL directly.";
+  out.innerHTML=log;
+});
+
+/* keyboard fallback (handy when testing on desktop) */
+window.addEventListener("keydown",e=>{
+  if(document.activeElement===$("#q")) return;
+  const map={ArrowUp:()=>navVertical(-1),ArrowDown:()=>navVertical(1),ArrowLeft:()=>navHorizontal(-1),ArrowRight:()=>navHorizontal(1),
+    Enter:activate," ":togglePlay,Backspace:goBack,Escape:goBack};
+  if(map[e.key]){ e.preventDefault(); map[e.key](); }
+});
+
+/* ============================ Boot ============================ */
+renderLibrary(); renderSearch(null); buildFocus(); pollPads();
+audio.playbackRate=state.speed;
+if(state.subs.length===0) setView("library");
+</script>
+</body>
+</html>
